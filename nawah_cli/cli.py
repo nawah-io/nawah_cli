@@ -19,6 +19,12 @@ def nawah_cli():
 	if sys.version_info.major != 3 or sys.version_info.minor != 8:
 		print('Nawah CLI can only run with Python3.8. Exiting.')
 		exit()
+	
+	# [REF] https://stackoverflow.com/a/41881271/2393762
+	def api_level_type(arg_value):
+		if not re.compile(r'^[0-9]\.[0-9]{1,2}$').match(arg_value):
+			raise argparse.ArgumentTypeError('API Level is invalid')
+		return arg_value
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument(
@@ -49,9 +55,9 @@ def nawah_cli():
 	)
 	parser_create.add_argument(
 		'--api-level',
-		type=str,
+		type=api_level_type,
 		help='App API Level',
-		default='1.0',
+		default='0.1',
 	)
 
 	args = parser.parse_args()
@@ -187,31 +193,61 @@ def create(args: argparse.Namespace):
 	for config_attr, config_set in app_config.items():
 		logger.info(f'- {config_attr}: \'{config_set[1]}\'')
 
-	api_level = '.'.join(__version__.split('.')[:2])
-	template_url = 'https://github.com/masaar/nawah_app_template/archive/APIv0.0.tar.gz'
-	template_url = template_url.replace('0.0', api_level)
-	logger.info(f'Attempting to download Nawah app template from: {template_url}')
-
-	# [REF] https://stackoverflow.com/a/7244263/2393762
-	file_name, _ = urllib.request.urlretrieve(template_url)
-	logger.info('File downloaded successfully!')
-
-	def template_members(*, archive):
-		l = len(f'nawah_app_template-APIv{api_level}/')
+	def archive_members(*, archive: tarfile.TarFile, root_path: str, search_path: str = None):
+		l = len(f'{root_path}/')
 		for member in archive.getmembers():
-			if member.path.startswith(f'nawah_app_template-APIv{api_level}'):
+			if member.path.startswith(f'{root_path}/{search_path or ""}'):
 				member.path = member.path[l:]
 				yield member
-
+	
 	app_path = os.path.realpath(os.path.join(args.app_path, args.app_name))
+	framework_path = os.path.realpath(os.path.join(args.app_path, args.app_name, 'nawah'))
+
+	template_url = 'https://github.com/nawah-io/nawah_app_template/archive/APIv0.0.tar.gz'
+	template_url = template_url.replace('0.0', args.api_level)
+	logger.info(f'Attempting to download Nawah app template from: {template_url}')
+	# [REF] https://stackoverflow.com/a/7244263/2393762
+	template_archive, _ = urllib.request.urlretrieve(template_url)
+	logger.info('Template archive downloaded successfully!')
+
 	logger.info(f'Attempting to extract template archive to: {app_path}')
-	# [REF]: https://stackoverflow.com/a/43094365/2393762
-	with tarfile.open(name=file_name, mode='r:gz') as archive:
-		archive.extract
+	# [REF] https://stackoverflow.com/a/43094365/2393762
+	with tarfile.open(name=template_archive, mode='r:gz') as archive:
 		archive.extractall(
-			path=app_path, members=template_members(archive=archive),
+			path=app_path, members=archive_members(archive=archive, root_path=f'nawah_app_template-APIv{args.api_level}'),
 		)
-	logger.info('Archive extracted successfully!')
+	logger.info('Template archive extracted successfully!')
+
+	framework_url = 'https://github.com/nawah-io/nawah_framework/archive/APIv0.0.tar.gz'
+	framework_url = framework_url.replace('0.0', args.api_level)
+	logger.info(f'Attempting to download Nawah framework from: {framework_url}')
+	framework_archive, _ = urllib.request.urlretrieve(framework_url)
+	logger.info('Framework archive downloaded successfully!')
+	logger.info(f'Attempting to extract framework archive to: {app_path}/nawah')
+	os.mkdir(framework_path)
+	with tarfile.open(name=framework_archive, mode='r:gz') as archive:
+		archive.extractall(
+			path=app_path, members=archive_members(archive=archive, root_path=f'nawah_framework-APIv{args.api_level}', search_path='requirements.txt'),
+		)
+		archive.extractall(
+			path=app_path, members=archive_members(archive=archive, root_path=f'nawah_framework-APIv{args.api_level}', search_path='nawah'),
+		)
+	logger.info('Framework archive extracted successfully!')
+
+	logger.info('Attempting to install Nawah framework requirements')
+	pip_command = [sys.executable, '-m', 'pip', 'install', '--user', '-r']
+	pip_call = subprocess.call(
+		pip_command
+		+ [os.path.join(args.app_path, args.app_name, 'requirements.txt')]
+	)
+	if pip_call != 0:
+		logger.error(
+			'\'pip\' call failed. Check console for more details. Exiting.'
+		)
+		exit(1)
+	
+	logger.info('Moving Nawah frameworks and deleting temp files')
+
 
 	logger.info('Attempting to initialise empty Git repo for new Nawah app.')
 	init_call = subprocess.call(
