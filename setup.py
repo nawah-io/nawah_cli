@@ -5,7 +5,7 @@ with open('README.md', 'r') as f:
 
 setuptools.setup(
 	name='nawah_cli',
-	version='0.1.0',
+	version='1.0.0',
 	author='Mahmoud Abduljawad',
 	author_email='mahmoud@masaar.com',
 	description='CLI for Nawah--Rapid app development framework',
