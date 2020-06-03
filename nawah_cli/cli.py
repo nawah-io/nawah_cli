@@ -282,6 +282,10 @@ def create(args: argparse.Namespace):
 	) as f:
 		f.write(gitignore_file.replace('PROJECT_NAME', args.app_name, 1))
 	
+	with open(
+		os.path.realpath(os.path.join(args.app_path, args.app_name, 'LICENSE')), 'w'
+	) as f:
+		f.write('')
 
 	with open(
 		os.path.realpath(os.path.join(args.app_path, args.app_name, 'README.md')), 'w'
