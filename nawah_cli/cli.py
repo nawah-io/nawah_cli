@@ -57,7 +57,7 @@ def nawah_cli():
 		'--api-level',
 		type=api_level_type,
 		help='App API Level',
-		default='0.1',
+		default='1.0',
 	)
 
 	args = parser.parse_args()
