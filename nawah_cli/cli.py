@@ -281,6 +281,13 @@ def create(args: argparse.Namespace):
 		os.path.realpath(os.path.join(args.app_path, args.app_name, '.gitignore')), 'w'
 	) as f:
 		f.write(gitignore_file.replace('PROJECT_NAME', args.app_name, 1))
+	
+
+	with open(
+		os.path.realpath(os.path.join(args.app_path, args.app_name, 'README.md')), 'w'
+	) as f:
+		f.write(f'''# {args.app_name}
+This Nawas app project was created with Nawah CLI v{__version__}, with API Level {args.api_level}.''')
 
 	os.rename(
 		os.path.realpath(

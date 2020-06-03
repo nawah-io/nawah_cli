@@ -1,0 +1,7 @@
+README.md
+setup.py
+nawah_cli.egg-info/PKG-INFO
+nawah_cli.egg-info/SOURCES.txt
+nawah_cli.egg-info/dependency_links.txt
+nawah_cli.egg-info/entry_points.txt
+nawah_cli.egg-info/top_level.txt

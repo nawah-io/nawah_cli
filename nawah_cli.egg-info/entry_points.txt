@@ -1,0 +1,3 @@
+[console_scripts]
+nawah = nawah_cli.__main__:main
+

@@ -29,7 +29,7 @@ setuptools.setup(
 	python_requires='>=3.8',
 	entry_points={
 		'console_scripts': {
-			'nawah_cli = nawah_cli.__main__:main',
+			'nawah = nawah_cli.__main__:main',
 		}
 	},
 )
