@@ -1,5 +1,8 @@
 README.md
 setup.py
+nawah_cli/__init__.py
+nawah_cli/__main__.py
+nawah_cli/cli.py
 nawah_cli.egg-info/PKG-INFO
 nawah_cli.egg-info/SOURCES.txt
 nawah_cli.egg-info/dependency_links.txt
