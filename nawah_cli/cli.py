@@ -75,9 +75,9 @@ def create(args: argparse.Namespace):
 			'Value for \'app_name\' CLI Arg is invalid. Name can\'t be \'nawah_app\''
 		)
 		exit(1)
-	elif not re.match(r'^[a-z_]+$', args.app_name):
+	elif not re.match(r'^[a-z][a-z0-9_]+$', args.app_name):
 		logger.error(
-			'Value for \'app_name\' CLI Arg is invalid. Name should have only small letters and underscores.'
+			'Value for \'app_name\' CLI Arg is invalid. Name should have only small letters, numbers, and underscores.'
 		)
 		exit(1)
 	
@@ -202,6 +202,7 @@ def create(args: argparse.Namespace):
 	
 	app_path = os.path.realpath(os.path.join(args.app_path, args.app_name))
 	framework_path = os.path.realpath(os.path.join(args.app_path, args.app_name, f'nawah-{args.api_level}.whl'))
+	stubs_path = os.path.realpath(os.path.join(args.app_path, args.app_name, 'nawah'))
 	req_path = os.path.realpath(os.path.join(args.app_path, args.app_name, 'requirements.txt'))
 
 	template_url = f'https://github.com/nawah-io/nawah_app_template/archive/APIv{args.api_level}.tar.gz'
@@ -209,21 +210,30 @@ def create(args: argparse.Namespace):
 	# [REF] https://stackoverflow.com/a/7244263/2393762
 	template_archive, _ = urllib.request.urlretrieve(template_url)
 	logger.info('Template archive downloaded successfully!')
-
 	logger.info(f'Attempting to extract template archive to: {app_path}')
-	# [REF] https://stackoverflow.com/a/43094365/2393762
 	with tarfile.open(name=template_archive, mode='r:gz') as archive:
 		archive.extractall(
 			path=app_path, members=archive_members(archive=archive, root_path=f'nawah_app_template-APIv{args.api_level}'),
 		)
 	logger.info('Template archive extracted successfully!')
 
-	framework_url = f'https://github.com/nawah-io/nawah_framework_wheels/raw/master/{args.api_level}/nawah-{args.api_level}.whl'
+	framework_url = f'https://github.com/nawah-io/nawah_framework_wheels/raw/master/{args.api_level}/nawah.whl'
 	logger.info(f'Attempting to download Nawah framework from: {framework_url}')
 	# [REF] https://stackoverflow.com/a/7244263/2393762
 	with urllib.request.urlopen(framework_url) as response, open(framework_path, 'wb') as framework_file:
 		framework_file.write(response.read())
 	logger.info('Framework downloaded successfully!')
+
+	stubs_url = f'https://github.com/nawah-io/nawah_framework_wheels/raw/master/{args.api_level}/stubs.tar.gz'
+	logger.info(f'Attempting to download Nawah framework stubs from: {stubs_url}')
+	stubs_archive, _ = urllib.request.urlretrieve(stubs_url)
+	logger.info('Nawah framework stubs archive downloaded successfully!')
+	logger.info(f'Attempting to extract Nawah framework stubs archive to: {stubs_path}')
+	with tarfile.open(name=stubs_archive, mode='r:gz') as archive:
+		archive.extractall(
+			path=stubs_path, members=archive_members(archive=archive, root_path='.'),
+		)
+	logger.info('Nawah framework stubs archive extracted successfully!')
 
 	req_url = f'https://github.com/nawah-io/nawah_framework_wheels/raw/master/{args.api_level}/requirements.txt'
 	logger.info(f'Attempting to download Nawah framework requirements from: {req_url}')
