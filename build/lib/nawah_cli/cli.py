@@ -2,7 +2,7 @@ from nawah_cli import __version__
 
 from typing import Literal, Any
 
-import argparse, os, logging, datetime, sys, subprocess, asyncio, traceback, shutil, urllib.request, re, tarfile, string, random
+import argparse, os, logging, datetime, sys, subprocess, asyncio, traceback, shutil, urllib.request, re, tarfile, string, random, time
 
 logger = logging.getLogger('nawah')
 handler = logging.StreamHandler()
@@ -75,9 +75,9 @@ def create(args: argparse.Namespace):
 			'Value for \'app_name\' CLI Arg is invalid. Name can\'t be \'nawah_app\''
 		)
 		exit(1)
-	elif not re.match(r'^[a-z_]+$', args.app_name):
+	elif not re.match(r'^[a-z][a-z0-9_]+$', args.app_name):
 		logger.error(
-			'Value for \'app_name\' CLI Arg is invalid. Name should have only small letters and underscores.'
+			'Value for \'app_name\' CLI Arg is invalid. Name should have only small letters, numbers, and underscores.'
 		)
 		exit(1)
 	
@@ -114,7 +114,7 @@ def create(args: argparse.Namespace):
 			config_attr_val = input('\n> What would be the value for \'env\'; Config Attr for default environnement to be used when invoking Nawah CLI \'launch\' command? [$__env.ENV]\n- ')
 			if not config_attr_val:
 				logger.info('Setting \'env\' Config Attr to default: \'$__env.ENV\'.')
-				app_config['data_name'] = ['nawah_data', (config_attr_val := '$__env.ENV')]
+				app_config['data_name'] = ['__ENV__', (config_attr_val := '$__env.ENV')]
 				break
 			elif config_attr_val not in list(envs_defaults.keys()) and not re.match(r'^\$__env\.[A-Za-z_]+$', config_attr_val):
 				logger.error('\'env\' Config Attr can only be one of the environments names defined in \'envs\' Config Attr, or a valid Env Variable.')
@@ -201,38 +201,46 @@ def create(args: argparse.Namespace):
 				yield member
 	
 	app_path = os.path.realpath(os.path.join(args.app_path, args.app_name))
-	framework_path = os.path.realpath(os.path.join(args.app_path, args.app_name, 'nawah'))
+	framework_path = os.path.realpath(os.path.join(args.app_path, args.app_name, f'nawah-{args.api_level}.whl'))
+	stubs_path = os.path.realpath(os.path.join(args.app_path, args.app_name, 'nawah'))
+	req_path = os.path.realpath(os.path.join(args.app_path, args.app_name, 'requirements.txt'))
 
-	template_url = 'https://github.com/nawah-io/nawah_app_template/archive/APIv0.0.tar.gz'
-	template_url = template_url.replace('0.0', args.api_level)
+	template_url = f'https://github.com/nawah-io/nawah_app_template/archive/APIv{args.api_level}.tar.gz'
 	logger.info(f'Attempting to download Nawah app template from: {template_url}')
 	# [REF] https://stackoverflow.com/a/7244263/2393762
 	template_archive, _ = urllib.request.urlretrieve(template_url)
 	logger.info('Template archive downloaded successfully!')
-
 	logger.info(f'Attempting to extract template archive to: {app_path}')
-	# [REF] https://stackoverflow.com/a/43094365/2393762
 	with tarfile.open(name=template_archive, mode='r:gz') as archive:
 		archive.extractall(
 			path=app_path, members=archive_members(archive=archive, root_path=f'nawah_app_template-APIv{args.api_level}'),
 		)
 	logger.info('Template archive extracted successfully!')
 
-	framework_url = 'https://github.com/nawah-io/nawah_framework/archive/APIv0.0.tar.gz'
-	framework_url = framework_url.replace('0.0', args.api_level)
+	framework_url = f'https://github.com/nawah-io/nawah_framework_wheels/raw/master/{args.api_level}/nawah.whl'
 	logger.info(f'Attempting to download Nawah framework from: {framework_url}')
-	framework_archive, _ = urllib.request.urlretrieve(framework_url)
-	logger.info('Framework archive downloaded successfully!')
-	logger.info(f'Attempting to extract framework archive to: {app_path}/nawah')
-	os.mkdir(framework_path)
-	with tarfile.open(name=framework_archive, mode='r:gz') as archive:
+	# [REF] https://stackoverflow.com/a/7244263/2393762
+	with urllib.request.urlopen(framework_url) as response, open(framework_path, 'wb') as framework_file:
+		framework_file.write(response.read())
+	logger.info('Framework downloaded successfully!')
+
+	stubs_url = f'https://github.com/nawah-io/nawah_framework_wheels/raw/master/{args.api_level}/stubs.tar.gz'
+	logger.info(f'Attempting to download Nawah framework stubs from: {stubs_url}')
+	stubs_archive, _ = urllib.request.urlretrieve(stubs_url)
+	logger.info('Nawah framework stubs archive downloaded successfully!')
+	logger.info(f'Attempting to extract Nawah framework stubs archive to: {stubs_path}')
+	with tarfile.open(name=stubs_archive, mode='r:gz') as archive:
 		archive.extractall(
-			path=app_path, members=archive_members(archive=archive, root_path=f'nawah_framework-APIv{args.api_level}', search_path='requirements.txt'),
+			path=stubs_path, members=archive_members(archive=archive, root_path='.'),
 		)
-		archive.extractall(
-			path=app_path, members=archive_members(archive=archive, root_path=f'nawah_framework-APIv{args.api_level}', search_path='nawah'),
-		)
-	logger.info('Framework archive extracted successfully!')
+	logger.info('Nawah framework stubs archive extracted successfully!')
+
+	req_url = f'https://github.com/nawah-io/nawah_framework_wheels/raw/master/{args.api_level}/requirements.txt'
+	logger.info(f'Attempting to download Nawah framework requirements from: {req_url}')
+	# [REF] https://stackoverflow.com/a/7244263/2393762
+	with urllib.request.urlopen(req_url) as response, open(req_path, 'wb') as req_file:
+		req_file.write(response.read())
+	logger.info('Framework requirements downloaded successfully!')
 
 	logger.info('Attempting to install Nawah framework requirements')
 	pip_command = [sys.executable, '-m', 'pip', 'install', '--user', '-r']
