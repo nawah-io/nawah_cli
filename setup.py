@@ -30,9 +30,5 @@ setuptools.setup(
 		'Framework :: AsyncIO',
 	],
 	python_requires='>=3.8',
-	entry_points={
-		'console_scripts': {
-			'nawah = nawah_cli.__main__:main',
-		}
-	},
+	entry_points={'console_scripts': {'nawah = nawah_cli.__main__:main',}},
 )
