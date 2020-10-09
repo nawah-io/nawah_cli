@@ -2,7 +2,7 @@ from nawah_cli import __version__
 
 from typing import Dict, Literal, Any
 
-import argparse, os, logging, datetime, sys, subprocess, asyncio, traceback, shutil, urllib.request, re, tarfile, string, random, time, json
+import argparse, os, logging, datetime, sys, subprocess, asyncio, traceback, shutil, urllib.request, re, tarfile, string, random, time, json, tempfile
 
 logger = logging.getLogger('nawah')
 handler = logging.StreamHandler()
@@ -54,7 +54,14 @@ def nawah_cli():
 		action='store_true',
 	)
 	parser_create.add_argument(
-		'--api-level', type=api_level_type, help='App API Level', default='1.0',
+		'--api-level',
+		type=api_level_type,
+		help='App API Level',
+		default='1.0',
+	)
+	parser_create.add_argument(
+		'--template',
+		help='Alternative local app template path',
 	)
 
 	args = parser.parse_args()
@@ -137,13 +144,38 @@ def create(args: argparse.Namespace):
 					member.path = member.path[l:]
 					yield member
 
-		template_url = (
-			f'https://github.com/nawah-io/nawah_app_template/archive/APIv{args.api_level}.tar.gz'
-		)
-		logger.info(f'Attempting to download Nawah app template from: {template_url}')
-		# [REF] https://stackoverflow.com/a/7244263/2393762
-		template_archive, _ = urllib.request.urlretrieve(template_url)
-		logger.info('Template archive downloaded successfully!')
+		if args.template:
+			logger.info(f'Attempting to use specified \'template\': \'{args.template}\'')
+			template_path = os.path.realpath(args.template)
+			if (
+				not os.path.exists(template_path)
+				or not os.path.isdir(template_path)
+				or not os.path.exists(os.path.join(template_path, 'nawah_app.py'))
+			):
+				logger.error('Specified \'template\' is not a valid Nawah app template. Exiting.')
+				exit(1)
+
+			logger.info(
+				'Attempting to create temporary template archive from specified \'template\''
+			)
+			temp_template_archive = tempfile.NamedTemporaryFile(mode='w')
+			# [REF] https://stackoverflow.com/a/17081026
+			# [REF] https://stackoverflow.com/a/16000963
+			with tarfile.open(temp_template_archive.name, 'w:gz') as archive:
+				archive.add(
+					template_path,
+					arcname=f'nawah_app_template-APIv{args.api_level}',
+					filter=lambda member: None if '.git/' in member.name else member,
+				)
+			logger.info('Template archive created successfully!')
+			template_archive = temp_template_archive.name
+		else:
+			template_url = f'https://github.com/nawah-io/nawah_app_template/archive/APIv{args.api_level}.tar.gz'
+			logger.info(f'Attempting to download Nawah app template from: {template_url}')
+			# [REF] https://stackoverflow.com/a/7244263/2393762
+			template_archive, _ = urllib.request.urlretrieve(template_url)
+			logger.info('Template archive downloaded successfully!')
+
 		logger.info(f'Attempting to extract template archive to: {app_path}')
 		with tarfile.open(name=template_archive, mode='r:gz') as archive:
 			archive.extractall(
@@ -170,7 +202,8 @@ def create(args: argparse.Namespace):
 		logger.info(f'Attempting to extract Nawah framework stubs archive to: {stubs_path}')
 		with tarfile.open(name=stubs_archive, mode='r:gz') as archive:
 			archive.extractall(
-				path=stubs_path, members=archive_members(archive=archive, root_path='.'),
+				path=stubs_path,
+				members=archive_members(archive=archive, root_path='.'),
 			)
 		logger.info('Nawah framework stubs archive extracted successfully!')
 
@@ -203,7 +236,8 @@ def create(args: argparse.Namespace):
 		logger.info('Attempting to initialise empty Git repo for new Nawah app.')
 		try:
 			init_call = subprocess.call(
-				['git', 'init'], cwd=os.path.realpath(os.path.join(args.app_path, args.app_name)),
+				['git', 'init'],
+				cwd=os.path.realpath(os.path.join(args.app_path, args.app_name)),
 			)
 			if init_call != 0:
 				raise Exception()
@@ -226,7 +260,7 @@ def create(args: argparse.Namespace):
 			with open(
 				os.path.realpath(os.path.join(args.app_path, args.app_name, 'nawah_app.py')), 'w'
 			) as f:
-				nawah_app_file = nawah_app_file.replace('__PROJECT_NAME__', args.app_name, 1)
+				nawah_app_file = nawah_app_file.replace('__PROJECT_NAME__', args.app_name, 2)
 				for config_set in app_config.values():
 					nawah_app_file = nawah_app_file.replace(config_set[0], config_set[1], 1)
 				f.write(nawah_app_file)
@@ -497,7 +531,10 @@ def dump_progress(
 			json.dumps(
 				{
 					'step': step,
-					'args': {'app_path': args.app_path, 'app_name': args.app_name,},
+					'args': {
+						'app_path': args.app_path,
+						'app_name': args.app_name,
+					},
 					'config': app_config,
 				}
 			)
