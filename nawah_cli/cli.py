@@ -87,7 +87,7 @@ def create(args: argparse.Namespace):
 
 	app_path = os.path.realpath(os.path.join(args.app_path, args.app_name))
 	framework_path = os.path.realpath(
-		os.path.join(args.app_path, args.app_name, f'nawah_{args.api_level}.whl')
+		os.path.join(args.app_path, args.app_name, f'framework-{args.api_level}.whl')
 	)
 	stubs_path = os.path.realpath(os.path.join(args.app_path, args.app_name, 'nawah'))
 	req_path = os.path.realpath(
