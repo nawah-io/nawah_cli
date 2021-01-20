@@ -4,7 +4,7 @@ import os
 def main():
 	# [DOC] If Nawah CLI is started from app context, use Framework CLI
 	if os.path.exists(os.path.join('.', 'nawah_app.py')):
-		print('Nawah CLI is running from Nawah project directory. Attempting to load framework CLI.')
+		print('Nawah CLI is running from Nawah project directory. Using framework CLI.')
 		# [REF] https://stackoverflow.com/a/3964691/2393762
 		import sys, glob
 
@@ -19,24 +19,6 @@ def main():
 				sys.argv.pop(nawah_path_index)
 			except:
 				print('Either no value for \'nawah_path\' CLI Arg, or invalid. Exiting.')
-				exit(1)
-
-		# [DOC] Fall back to wheel
-		else:
-			try:
-				print('Attempting to locate Nawah framework wheel file.')
-				whl_name = glob.glob('framework-*.whl')
-				if not whl_name:
-					print('Failed.')
-				
-				whl_name = whl_name[0]
-
-				# [REF] http://avrilomics.blogspot.com/2015/11/import-python-module-from-egg-file.html
-				sys.path.insert(0, os.path.join('.', whl_name))
-				
-				print(f'Found wheel file: \'{whl_name}\'. Attempting to load it.')
-			except:
-				print('No Nawah Framework wheel file was found. Exiting.')
 				exit(1)
 
 		# [DOC] Attempt to import Framework CLI
